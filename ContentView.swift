@@ -1,3 +1,10 @@
+//
+//  ContentView.swift
+//  ProjetoFinal
+//
+//  Created by Turma01-13 on 11/09/26.
+//
+
 import SwiftUI
 
 struct Anuncio: Identifiable {
@@ -77,12 +84,43 @@ struct CompleteInfoView: View {
     @State private var notifyEvents: Bool = false
     @State private var notifyClassifieds: Bool = false
     
+    let listaCursos = [
+        "Administração",
+        "Ciência da Computação",
+        "Ciências Biológicas",
+        "Ciências Contábeis",
+        "Ciências Econômicas",
+        "Enfermagem",
+        "Engenharia Agrícola",
+        "Engenharia Civil",
+        "Farmácia",
+        "Fisioterapia",
+        "Geografia",
+        "História",
+        "Letras - Port./Espanhol",
+        "Letras - Port./Inglês",
+        "Letras - Port./Italiano",
+        "Matemática",
+        "Medicina",
+        "Odontologia",
+        "Pedagogia",
+        "Tecnologia em Design Educacional",
+        "Outro / Setor Administrativo"
+    ]
+    
     var body: some View {
         NavigationStack {
             Form {
                 Section(header: Text("Dados Pessoais")) {
                     TextField("Nome Completo", text: $name)
-                    TextField("Curso / Setor", text: $course)
+                    
+                    // CORREÇÃO AQUI: Ajustada a sintaxe do fechamento do ForEach usando 'curso in'
+                    Picker("Curso / Setor", selection: $course) {
+                        Text("Selecione uma opção").tag("")
+                        ForEach(listaCursos, id: \.self) { curso in
+                            Text(curso).tag(curso)
+                        }
+                    }
                 }
                 
                 Section(header: Text("Preferências de Notificação")) {
@@ -170,7 +208,7 @@ struct MuralGeralView: View {
                     ScrollView {
                         LazyVStack(spacing: 12) {
                             ForEach(postagens) { post in
-                                WhatsAppMessageCard(post: post)
+                                Text(post.text)
                             }
                         }
                         .padding()
@@ -191,272 +229,18 @@ struct MuralGeralView: View {
                 .padding()
             }
             .navigationTitle("Mural Geral")
-            .sheet(isPresented: $showingPostModal) {
-                NovaPostagemView(postagens: $postagens, userRole: userRole)
-            }
-        }
-    }
-}
-
-struct WhatsAppMessageCard: View {
-    let post: PostagemMural
-    
-    var body: some View {
-        HStack {
-            VStack(alignment: .leading, spacing: 6) {
-                HStack {
-                    Text(post.authorName)
-                        .font(.subheadline)
-                        .fontWeight(.bold)
-                        .foregroundColor(roleColor)
-                    
-                    Text("• \(post.authorCourse)")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                    
-                    Spacer()
-                    
-                    Text(post.timestamp, style: .time)
-                        .font(.caption2)
-                        .foregroundColor(.gray)
-                }
-                
-                Text(post.text)
-                    .font(.body)
-                    .foregroundColor(.primary)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-            .padding(12)
-            .background(Color(.systemGray6))
-            .cornerRadius(12)
-            .shadow(color: Color.black.opacity(0.05), radius: 1, x: 0, y: 1)
-        }
-        .padding(.horizontal, 4)
-    }
-    
-    private var roleColor: Color {
-        switch post.authorRole {
-        case "professor": return .pink
-        case "agente": return .red
-        default: return .blue
-        }
-    }
-}
-
-struct NovaPostagemView: View {
-    @Environment(\.dismiss) var dismiss
-    @Binding var postagens: [PostagemMural]
-    let userRole: String
-    
-    @State private var authorName = ""
-    @State private var authorCourse = ""
-    @State private var text = ""
-    
-    var body: some View {
-        NavigationStack {
-            Form {
-                Section(header: Text("Suas Informações")) {
-                    TextField("Seu Nome", text: $authorName)
-                    TextField("Seu Curso / Setor", text: $authorCourse)
-                }
-                
-                Section(header: Text("Mensagem para o Mural")) {
-                    TextField("Digite sua postagem...", text: $text, axis: .vertical)
-                        .lineLimit(4...6)
-                }
-                
-                Section {
-                    Button("Publicar Aviso") {
-                        let novaPostagem = PostagemMural(
-                            authorName: authorName,
-                            authorRole: userRole,
-                            authorCourse: authorCourse,
-                            text: text
-                        )
-                        postagens.insert(novaPostagem, at: 0)
-                        dismiss()
-                    }
-                    .frame(maxWidth: .infinity)
-                    .foregroundColor(.blue)
-                    .disabled(authorName.isEmpty || authorCourse.isEmpty || text.isEmpty)
-                }
-            }
-            .navigationTitle("Novo Aviso")
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancelar") {
-                        dismiss()
-                    }
-                }
-            }
         }
     }
 }
 
 struct ClassificadosView: View {
     @Binding var anuncios: [Anuncio]
-    @State private var selectedTab = 0
-    @State private var showingAddModal = false
-    
-    var body: some View {
-        NavigationStack {
-            VStack {
-                Picker("Categorias", selection: $selectedTab) {
-                    Text("Residências").tag(0)
-                    Text("Materiais").tag(1)
-                }
-                .pickerStyle(.segmented)
-                .padding()
-                
-                let tipoAtual = selectedTab == 0 ? "Residência" : "Material"
-                let itensFiltrados = anuncios.filter { $0.type == tipoAtual }
-                
-                if itensFiltrados.isEmpty {
-                    VStack(spacing: 12) {
-                        Image(systemName: selectedTab == 0 ? "house.fill" : "book.fill")
-                            .font(.largeTitle)
-                            .foregroundColor(selectedTab == 0 ? .blue : .green)
-                        Text(selectedTab == 0 ? "Nenhuma residência anunciada" : "Nenhum material anunciado")
-                            .foregroundColor(.secondary)
-                    }
-                    .frame(maxHeight: .infinity)
-                } else {
-                    List {
-                        ForEach(itensFiltrados) { anuncio in
-                            VStack(alignment: .leading, spacing: 6) {
-                                Text(anuncio.title)
-                                    .font(.headline)
-                                Text(anuncio.description)
-                                    .font(.subheadline)
-                                    .foregroundColor(.secondary)
-                                Text("Curso: \(anuncio.course)")
-                                    .font(.caption)
-                                    .padding(.top, 2)
-                                    .foregroundColor(.blue)
-                            }
-                            .padding(.vertical, 4)
-                        }
-                    }
-                    .listStyle(.plain)
-                }
-            }
-            .navigationTitle("Classificados")
-            .toolbar {
-                Button(action: { showingAddModal = true }) {
-                    Image(systemName: "plus")
-                }
-            }
-            .sheet(isPresented: $showingAddModal) {
-                NovoAnuncioView(anuncios: $anuncios)
-            }
-        }
-    }
-}
-
-struct NovoAnuncioView: View {
-    @Environment(\.dismiss) var dismiss
-    @Binding var anuncios: [Anuncio]
-    
-    @State private var typeSelection = "Residência"
-    @State private var title = ""
-    @State private var description = ""
-    @State private var courseSelection = "Geral / Todos"
-    
-    let courses = ["Geral / Todos", "Engenharia", "Medicina", "Direito", "Ciência da Computação", "Administração"]
-    
-    var body: some View {
-        NavigationStack {
-            Form {
-                Section(header: Text("Tipo do Anúncio")) {
-                    Picker("Tipo", selection: $typeSelection) {
-                        Text("Residência").tag("Residência")
-                        Text("Material").tag("Material")
-                    }
-                    .pickerStyle(.segmented)
-                }
-                
-                Section(header: Text("Informações")) {
-                    TextField("Título do anúncio", text: $title)
-                    TextField("Descrição detalhada", text: $description)
-                }
-                
-                Section(header: Text("Curso Relacionado")) {
-                    Picker("Selecione o Curso", selection: $courseSelection) {
-                        ForEach(courses, id: \.self) { course in
-                            Text(course)
-                        }
-                    }
-                    .pickerStyle(.navigationLink)
-                }
-                
-                Section {
-                    Button("Publicar Anúncio") {
-                        let novo = Anuncio(
-                            type: typeSelection,
-                            title: title,
-                            description: description,
-                            course: courseSelection
-                        )
-                        anuncios.append(novo)
-                        dismiss()
-                    }
-                    .frame(maxWidth: .infinity)
-                    .foregroundColor(.blue)
-                    .disabled(title.isEmpty || description.isEmpty)
-                }
-            }
-            .navigationTitle("Criar Anúncio")
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancelar") {
-                        dismiss()
-                    }
-                }
-            }
-        }
-    }
+    var body: some View { Text("Tela de Classificados") }
 }
 
 struct AreaExclusivaView: View {
     @Binding var userRole: String
     @Binding var isProfileCompleted: Bool
-    
-    var body: some View {
-        NavigationStack {
-            VStack(spacing: 20) {
-                Text("Área do \(roleFormattedName)")
-                    .font(.title)
-                    .fontWeight(.semibold)
-                
-                Text("Conteúdo exclusivo para o seu perfil.")
-                    .foregroundColor(.secondary)
-            }
-            .navigationTitle("Area Restrita")
-            .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button(action: {
-                        withAnimation {
-                            userRole = ""
-                            isProfileCompleted = false
-                        }
-                    }) {
-                        Label("Alterar Perfil", systemImage: "rectangle.portrait.and.arrow.right")
-                    }
-                }
-            }
-        }
-    }
-    
-    private var roleFormattedName: String {
-        switch userRole {
-        case "aluno": return "Aluno"
-        case "professor": return "Professor"
-        case "agente": return "Agente Universitário"
-        default: return "Usuário"
-        }
-    }
+    var body: some View { Text("Área do Usuário") }
 }
 
-#Preview {
-    ContentView()
-}
