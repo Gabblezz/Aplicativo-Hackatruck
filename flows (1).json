@@ -1,0 +1,726 @@
+[
+    {
+        "id": "02b62f923772707e",
+        "type": "tab",
+        "label": "API Projeto Final",
+        "disabled": false,
+        "info": "API REST do aplicativo usando Cloudant"
+    },
+    {
+        "id": "bd16f26314094879",
+        "type": "http in",
+        "z": "02b62f923772707e",
+        "name": "GET - Listar documentos",
+        "url": "/api/documentos",
+        "method": "get",
+        "upload": false,
+        "swaggerDoc": "",
+        "x": 130,
+        "y": 80,
+        "wires": [
+            [
+                "90cb9c62ee5212b2"
+            ]
+        ]
+    },
+    {
+        "id": "90cb9c62ee5212b2",
+        "type": "cloudantplus in",
+        "z": "02b62f923772707e",
+        "name": "Buscar documentos",
+        "cloudant": "086da8ec3872ad88",
+        "database": "projeto-final",
+        "service": "_ext_",
+        "search": "_all_",
+        "design": "",
+        "index": "",
+        "x": 390,
+        "y": 80,
+        "wires": [
+            [
+                "54f198586869bfbf",
+                "a4172494837a5568"
+            ]
+        ]
+    },
+    {
+        "id": "a4172494837a5568",
+        "type": "debug",
+        "z": "02b62f923772707e",
+        "name": "DEBUG cloudant in",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "payload",
+        "targetType": "msg",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 620,
+        "y": 40,
+        "wires": []
+    },
+    {
+        "id": "54f198586869bfbf",
+        "type": "function",
+        "z": "02b62f923772707e",
+        "name": "Formatar resposta GET",
+        "func": "msg.statusCode = 200;\n\nlet docs = [];\n\nif (Array.isArray(msg.payload)) {\n    docs = msg.payload;\n} else if (msg.payload && Array.isArray(msg.payload.documentos)) {\n    docs = msg.payload.documentos;\n} else if (msg.payload && Array.isArray(msg.payload.rows)) {\n    docs = msg.payload.rows.map(r => r.doc || r.value || r);\n} else if (msg.payload && Array.isArray(msg.payload.docs)) {\n    docs = msg.payload.docs;\n} else if (msg.payload && typeof msg.payload === 'object') {\n    docs = [msg.payload];\n}\n\ndocs = docs.filter(d => d && d._id && !String(d._id).startsWith('_design/'));\n\nmsg.payload = {\n    documentos: docs,\n    total: docs.length\n};\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 650,
+        "y": 80,
+        "wires": [
+            [
+                "5f3b585f46cb3b5b"
+            ]
+        ]
+    },
+    {
+        "id": "5f3b585f46cb3b5b",
+        "type": "http response",
+        "z": "02b62f923772707e",
+        "name": "Resposta GET",
+        "statusCode": "",
+        "headers": {},
+        "x": 890,
+        "y": 80,
+        "wires": []
+    },
+    {
+        "id": "871ba42e84b36b8d",
+        "type": "http in",
+        "z": "02b62f923772707e",
+        "name": "POST - Criar documento",
+        "url": "/api/documentos",
+        "method": "post",
+        "upload": false,
+        "swaggerDoc": "",
+        "x": 140,
+        "y": 180,
+        "wires": [
+            [
+                "8eee806cb6feb7f1"
+            ]
+        ]
+    },
+    {
+        "id": "8eee806cb6feb7f1",
+        "type": "json",
+        "z": "02b62f923772707e",
+        "name": "Interpretar JSON POST",
+        "property": "payload",
+        "action": "obj",
+        "pretty": false,
+        "x": 390,
+        "y": 180,
+        "wires": [
+            [
+                "dcc43b37f9e2c458"
+            ]
+        ]
+    },
+    {
+        "id": "dcc43b37f9e2c458",
+        "type": "function",
+        "z": "02b62f923772707e",
+        "name": "Validar POST",
+        "func": "const body = msg.payload || {};\n\nif (!body.tipo) {\n    msg.statusCode = 400;\n    msg.payload = { erro: \"O campo tipo e obrigatorio. Use usuario, postagem ou anuncio.\" };\n    return [null, msg];\n}\n\nconst tiposPermitidos = [\"usuario\", \"postagem\", \"anuncio\"];\nif (!tiposPermitidos.includes(body.tipo)) {\n    msg.statusCode = 400;\n    msg.payload = { erro: \"Tipo invalido. Use usuario, postagem ou anuncio.\" };\n    return [null, msg];\n}\n\nif (!body._id) {\n    body._id = body.tipo + \":\" + Date.now() + \":\" + Math.random().toString(36).slice(2, 8);\n}\n\nbody.createdAt = body.createdAt || new Date().toISOString();\nmsg._idEnviado = body._id;\nmsg.payload = body;\nreturn [msg, null];",
+        "outputs": 2,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 650,
+        "y": 180,
+        "wires": [
+            [
+                "95bf3c9af55c5e76"
+            ],
+            [
+                "6a16fb908ba7f355"
+            ]
+        ]
+    },
+    {
+        "id": "95bf3c9af55c5e76",
+        "type": "cloudantplus out",
+        "z": "02b62f923772707e",
+        "name": "Inserir documento",
+        "cloudant": "086da8ec3872ad88",
+        "database": "projeto-final",
+        "service": "_ext_",
+        "payonly": true,
+        "operation": "insert",
+        "x": 900,
+        "y": 160,
+        "wires": [
+            [
+                "97bebcd5a4154d73"
+            ]
+        ]
+    },
+    {
+        "id": "97bebcd5a4154d73",
+        "type": "function",
+        "z": "02b62f923772707e",
+        "name": "Resposta POST",
+        "func": "msg.statusCode = 201;\nconst p = msg.payload || {};\nconst id = p._id || p.id || msg._idEnviado;\nconst rev = p._rev || p.rev;\nmsg.payload = {\n    mensagem: \"Documento criado com sucesso.\",\n    id: id,\n    revisao: rev\n};\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1140,
+        "y": 160,
+        "wires": [
+            [
+                "38f427eae77a1ba7"
+            ]
+        ]
+    },
+    {
+        "id": "38f427eae77a1ba7",
+        "type": "http response",
+        "z": "02b62f923772707e",
+        "name": "Resposta POST",
+        "statusCode": "",
+        "headers": {},
+        "x": 1370,
+        "y": 160,
+        "wires": []
+    },
+    {
+        "id": "6a16fb908ba7f355",
+        "type": "http response",
+        "z": "02b62f923772707e",
+        "name": "Erro POST",
+        "statusCode": "",
+        "headers": {},
+        "x": 900,
+        "y": 220,
+        "wires": []
+    },
+    {
+        "id": "df1a0c650eb89eec",
+        "type": "http in",
+        "z": "02b62f923772707e",
+        "name": "PUT - Atualizar documento",
+        "url": "/api/documentos",
+        "method": "put",
+        "upload": false,
+        "swaggerDoc": "",
+        "x": 160,
+        "y": 320,
+        "wires": [
+            [
+                "6c429c55eb985ede"
+            ]
+        ]
+    },
+    {
+        "id": "6c429c55eb985ede",
+        "type": "json",
+        "z": "02b62f923772707e",
+        "name": "Interpretar JSON PUT",
+        "property": "payload",
+        "action": "obj",
+        "pretty": false,
+        "x": 410,
+        "y": 320,
+        "wires": [
+            [
+                "2f72e1bf9dded865"
+            ]
+        ]
+    },
+    {
+        "id": "2f72e1bf9dded865",
+        "type": "function",
+        "z": "02b62f923772707e",
+        "name": "Validar PUT",
+        "func": "const body = msg.payload || {};\n\nif (!body._id || !body._rev) {\n    msg.statusCode = 400;\n    msg.payload = { erro: \"Para atualizar, envie _id e _rev do documento.\" };\n    return [null, msg];\n}\n\nif (!body.tipo) {\n    msg.statusCode = 400;\n    msg.payload = { erro: \"O campo tipo e obrigatorio.\" };\n    return [null, msg];\n}\n\nbody.updatedAt = new Date().toISOString();\nmsg.payload = body;\nreturn [msg, null];",
+        "outputs": 2,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 660,
+        "y": 320,
+        "wires": [
+            [
+                "c418a31d24e495cc"
+            ],
+            [
+                "254fff206801dd66"
+            ]
+        ]
+    },
+    {
+        "id": "c418a31d24e495cc",
+        "type": "cloudantplus out",
+        "z": "02b62f923772707e",
+        "name": "Atualizar documento",
+        "cloudant": "086da8ec3872ad88",
+        "database": "projeto-final",
+        "service": "_ext_",
+        "payonly": true,
+        "operation": "insert",
+        "x": 920,
+        "y": 300,
+        "wires": [
+            [
+                "8ad432a56194eadb"
+            ]
+        ]
+    },
+    {
+        "id": "8ad432a56194eadb",
+        "type": "function",
+        "z": "02b62f923772707e",
+        "name": "Resposta PUT",
+        "func": "msg.statusCode = 200;\nconst p = msg.payload || {};\nmsg.payload = {\n    mensagem: \"Documento atualizado com sucesso.\",\n    id: p.id || p._id,\n    revisao: p.rev || p._rev\n};\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1160,
+        "y": 300,
+        "wires": [
+            [
+                "71a354b9503bbc6d"
+            ]
+        ]
+    },
+    {
+        "id": "71a354b9503bbc6d",
+        "type": "http response",
+        "z": "02b62f923772707e",
+        "name": "Resposta PUT",
+        "statusCode": "",
+        "headers": {},
+        "x": 1380,
+        "y": 300,
+        "wires": []
+    },
+    {
+        "id": "254fff206801dd66",
+        "type": "http response",
+        "z": "02b62f923772707e",
+        "name": "Erro PUT",
+        "statusCode": "",
+        "headers": {},
+        "x": 920,
+        "y": 360,
+        "wires": []
+    },
+    {
+        "id": "9265544277ad6369",
+        "type": "http in",
+        "z": "02b62f923772707e",
+        "name": "DELETE - Excluir documento",
+        "url": "/api/documentos",
+        "method": "delete",
+        "upload": false,
+        "swaggerDoc": "",
+        "x": 160,
+        "y": 460,
+        "wires": [
+            [
+                "cb8219711321a593"
+            ]
+        ]
+    },
+    {
+        "id": "cb8219711321a593",
+        "type": "json",
+        "z": "02b62f923772707e",
+        "name": "Interpretar JSON DELETE",
+        "property": "payload",
+        "action": "obj",
+        "pretty": false,
+        "x": 420,
+        "y": 460,
+        "wires": [
+            [
+                "ce3344912a290a2b"
+            ]
+        ]
+    },
+    {
+        "id": "ce3344912a290a2b",
+        "type": "function",
+        "z": "02b62f923772707e",
+        "name": "Validar DELETE",
+        "func": "const body = msg.payload || {};\n\nif (!body._id || !body._rev) {\n    msg.statusCode = 400;\n    msg.payload = { erro: \"Para excluir, envie _id e _rev do documento.\" };\n    return [null, msg];\n}\n\nmsg.payload = {\n    _id: body._id,\n    _rev: body._rev\n};\nreturn [msg, null];",
+        "outputs": 2,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 670,
+        "y": 460,
+        "wires": [
+            [
+                "7579411a42742e49"
+            ],
+            [
+                "5541d6ee48622f30"
+            ]
+        ]
+    },
+    {
+        "id": "7579411a42742e49",
+        "type": "cloudantplus out",
+        "z": "02b62f923772707e",
+        "name": "Deletar documento",
+        "cloudant": "086da8ec3872ad88",
+        "database": "projeto-final",
+        "service": "_ext_",
+        "payonly": true,
+        "operation": "delete",
+        "x": 930,
+        "y": 440,
+        "wires": [
+            [
+                "3d1ac2eeca041809"
+            ]
+        ]
+    },
+    {
+        "id": "3d1ac2eeca041809",
+        "type": "function",
+        "z": "02b62f923772707e",
+        "name": "Resposta DELETE",
+        "func": "msg.statusCode = 200;\nconst p = msg.payload || {};\nmsg.payload = {\n    mensagem: \"Documento excluido com sucesso.\",\n    id: p.id || p._id\n};\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1170,
+        "y": 440,
+        "wires": [
+            [
+                "1e6045ca6739a9fb"
+            ]
+        ]
+    },
+    {
+        "id": "1e6045ca6739a9fb",
+        "type": "http response",
+        "z": "02b62f923772707e",
+        "name": "Resposta DELETE",
+        "statusCode": "",
+        "headers": {},
+        "x": 1400,
+        "y": 440,
+        "wires": []
+    },
+    {
+        "id": "5541d6ee48622f30",
+        "type": "http response",
+        "z": "02b62f923772707e",
+        "name": "Erro DELETE",
+        "statusCode": "",
+        "headers": {},
+        "x": 930,
+        "y": 500,
+        "wires": []
+    },
+    {
+        "id": "b304b8e2755c3359",
+        "type": "http in",
+        "z": "02b62f923772707e",
+        "name": "GET - Usuario por ID",
+        "url": "/api/usuarios/:usuarioId",
+        "method": "get",
+        "upload": false,
+        "swaggerDoc": "",
+        "x": 140,
+        "y": 600,
+        "wires": [
+            [
+                "81214bab239ef87b"
+            ]
+        ]
+    },
+    {
+        "id": "81214bab239ef87b",
+        "type": "cloudantplus in",
+        "z": "02b62f923772707e",
+        "name": "Buscar todos",
+        "cloudant": "086da8ec3872ad88",
+        "database": "projeto-final",
+        "service": "_ext_",
+        "search": "_all_",
+        "design": "",
+        "index": "",
+        "x": 400,
+        "y": 600,
+        "wires": [
+            [
+                "2e0ca939076ec0b5"
+            ]
+        ]
+    },
+    {
+        "id": "2e0ca939076ec0b5",
+        "type": "function",
+        "z": "02b62f923772707e",
+        "name": "Filtrar usuario pelo _id",
+        "func": "const usuarioId = msg.req.params.usuarioId;\nlet docs = [];\n\nif (Array.isArray(msg.payload)) {\n    docs = msg.payload;\n} else if (msg.payload && Array.isArray(msg.payload.rows)) {\n    docs = msg.payload.rows.map(r => r.doc || r.value || r);\n} else if (msg.payload && Array.isArray(msg.payload.documentos)) {\n    docs = msg.payload.documentos;\n}\n\nconst usuario = docs.find(d => d.tipo === 'usuario' && d._id === usuarioId);\n\nif (!usuario) {\n    msg.statusCode = 404;\n    msg.payload = { erro: 'Usuario nao encontrado.' };\n    return msg;\n}\n\nmsg.statusCode = 200;\nmsg.payload = usuario;\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 680,
+        "y": 600,
+        "wires": [
+            [
+                "31dc91043b1f33fa"
+            ]
+        ]
+    },
+    {
+        "id": "31dc91043b1f33fa",
+        "type": "http response",
+        "z": "02b62f923772707e",
+        "name": "Resposta usuario",
+        "statusCode": "",
+        "headers": {},
+        "x": 920,
+        "y": 600,
+        "wires": []
+    },
+    {
+        "id": "2440441d6703ecf7",
+        "type": "http in",
+        "z": "02b62f923772707e",
+        "name": "GET - Notificacoes do usuario",
+        "url": "/api/notificacoes/:usuarioId",
+        "method": "get",
+        "upload": false,
+        "swaggerDoc": "",
+        "x": 170,
+        "y": 700,
+        "wires": [
+            [
+                "f781c7396dc375e9"
+            ]
+        ]
+    },
+    {
+        "id": "f781c7396dc375e9",
+        "type": "cloudantplus in",
+        "z": "02b62f923772707e",
+        "name": "Buscar todos",
+        "cloudant": "086da8ec3872ad88",
+        "database": "projeto-final",
+        "service": "_ext_",
+        "search": "_all_",
+        "design": "",
+        "index": "",
+        "x": 400,
+        "y": 700,
+        "wires": [
+            [
+                "a4f50c79a03f1e93"
+            ]
+        ]
+    },
+    {
+        "id": "a4f50c79a03f1e93",
+        "type": "function",
+        "z": "02b62f923772707e",
+        "name": "Filtrar avisos do usuario",
+        "func": "const usuarioId = msg.req.params.usuarioId;\nlet docs = [];\n\nif (Array.isArray(msg.payload)) {\n    docs = msg.payload;\n} else if (msg.payload && Array.isArray(msg.payload.rows)) {\n    docs = msg.payload.rows.map(r => r.doc || r.value || r);\n} else if (msg.payload && Array.isArray(msg.payload.documentos)) {\n    docs = msg.payload.documentos;\n}\n\nconst usuario = docs.find(d => d.tipo === 'usuario' && d._id === usuarioId);\nif (!usuario) {\n    msg.statusCode = 404;\n    msg.payload = { erro: 'Usuario nao encontrado.' };\n    return msg;\n}\n\nconst prefs = usuario.notificacoes || { receberGeral: true, receberCursos: true };\nconst cursoUsuario = (usuario.curso || '').toLowerCase();\n\nfunction combinaDestino(item) {\n    const destino = item.destino || '';\n    const cursoDestino = (item.cursoDestino || '').toLowerCase();\n    if (destino === '@geral' && prefs.receberGeral) return true;\n    if (destino === '@curso' && cursoDestino === cursoUsuario && prefs.receberCursos) return true;\n    return false;\n}\n\nconst avisosPostagem = docs\n    .filter(d => d.tipo === 'postagem')\n    .filter(combinaDestino)\n    .map(p => ({\n        _id: p._id,\n        tipo: 'aviso',\n        usuarioId: usuarioId,\n        postagemId: p._id,\n        destino: p.destino,\n        titulo: p.destino === '@geral' ? 'Aviso geral' : 'Aviso do seu curso',\n        mensagem: p.text,\n        curso: p.cursoDestino || null,\n        criadaEm: p.timestamp || p.createdAt,\n        lida: false\n    }));\n\nconst avisosAnuncio = docs\n    .filter(d => d.tipo === 'anuncio')\n    .filter(combinaDestino)\n    .map(a => ({\n        _id: a._id,\n        tipo: 'aviso',\n        usuarioId: usuarioId,\n        postagemId: a._id,\n        destino: a.destino,\n        titulo: a.destino === '@geral' ? 'Novo anuncio geral' : 'Novo anuncio do seu curso',\n        mensagem: a.title + ': ' + a.description,\n        curso: a.cursoDestino || null,\n        criadaEm: a.createdAt,\n        lida: false\n    }));\n\nconst avisos = avisosPostagem\n    .concat(avisosAnuncio)\n    .sort((a, b) => (b.criadaEm || '').localeCompare(a.criadaEm || ''));\n\nmsg.statusCode = 200;\nmsg.payload = avisos;\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 680,
+        "y": 700,
+        "wires": [
+            [
+                "dd0cc121801ea5c8"
+            ]
+        ]
+    },
+    {
+        "id": "dd0cc121801ea5c8",
+        "type": "http response",
+        "z": "02b62f923772707e",
+        "name": "Resposta notificacoes",
+        "statusCode": "",
+        "headers": {},
+        "x": 920,
+        "y": 700,
+        "wires": []
+    },
+    {
+        "id": "0fbe4625e3b8c1e1",
+        "type": "http in",
+        "z": "02b62f923772707e",
+        "name": "PUT - Preferencias de notificacao",
+        "url": "/api/usuarios/:usuarioId/notificacoes",
+        "method": "put",
+        "upload": false,
+        "swaggerDoc": "",
+        "x": 190,
+        "y": 800,
+        "wires": [
+            [
+                "e5428f6cbfa66a38"
+            ]
+        ]
+    },
+    {
+        "id": "e5428f6cbfa66a38",
+        "type": "json",
+        "z": "02b62f923772707e",
+        "name": "Parse JSON prefs",
+        "property": "payload",
+        "action": "obj",
+        "pretty": false,
+        "x": 420,
+        "y": 800,
+        "wires": [
+            [
+                "45acb49ed939495f"
+            ]
+        ]
+    },
+    {
+        "id": "45acb49ed939495f",
+        "type": "function",
+        "z": "02b62f923772707e",
+        "name": "Guardar params",
+        "func": "const usuarioId = msg.req.params.usuarioId;\nconst prefs = msg.payload || {};\n\nmsg._usuarioId = usuarioId;\nmsg._prefs = prefs;\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 660,
+        "y": 800,
+        "wires": [
+            [
+                "d6b41cc6bd2cdf25"
+            ]
+        ]
+    },
+    {
+        "id": "d6b41cc6bd2cdf25",
+        "type": "cloudantplus in",
+        "z": "02b62f923772707e",
+        "name": "Buscar todos",
+        "cloudant": "086da8ec3872ad88",
+        "database": "projeto-final",
+        "service": "_ext_",
+        "search": "_all_",
+        "design": "",
+        "index": "",
+        "x": 400,
+        "y": 860,
+        "wires": [
+            [
+                "fe8df5f225ebfea1"
+            ]
+        ]
+    },
+    {
+        "id": "fe8df5f225ebfea1",
+        "type": "function",
+        "z": "02b62f923772707e",
+        "name": "Montar doc atualizado",
+        "func": "const usuarioId = msg._usuarioId;\nconst prefs = msg._prefs || {};\nlet docs = [];\n\nif (Array.isArray(msg.payload)) {\n    docs = msg.payload;\n} else if (msg.payload && Array.isArray(msg.payload.rows)) {\n    docs = msg.payload.rows.map(r => r.doc || r.value || r);\n} else if (msg.payload && Array.isArray(msg.payload.documentos)) {\n    docs = msg.payload.documentos;\n}\n\nconst usuario = docs.find(d => d.tipo === 'usuario' && d._id === usuarioId);\n\nif (!usuario) {\n    msg.statusCode = 404;\n    msg.payload = { erro: 'Usuario nao encontrado.' };\n    return [null, msg];\n}\n\nusuario.notificacoes = {\n    receberGeral: !!prefs.receberGeral,\n    receberCursos: !!prefs.receberCursos\n};\nusuario.updatedAt = new Date().toISOString();\n\nmsg.payload = usuario;\nreturn [msg, null];",
+        "outputs": 2,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 700,
+        "y": 860,
+        "wires": [
+            [
+                "12c83fbdd387d047"
+            ],
+            [
+                "ffe6b4d0f9bd3c61"
+            ]
+        ]
+    },
+    {
+        "id": "12c83fbdd387d047",
+        "type": "cloudantplus out",
+        "z": "02b62f923772707e",
+        "name": "Salvar prefs",
+        "cloudant": "086da8ec3872ad88",
+        "database": "projeto-final",
+        "service": "_ext_",
+        "payonly": true,
+        "operation": "insert",
+        "x": 940,
+        "y": 840,
+        "wires": [
+            [
+                "9573ba711e74b40c"
+            ]
+        ]
+    },
+    {
+        "id": "9573ba711e74b40c",
+        "type": "function",
+        "z": "02b62f923772707e",
+        "name": "Resposta prefs",
+        "func": "msg.statusCode = 200;\nmsg.payload = { mensagem: 'Preferencias atualizadas com sucesso.' };\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1150,
+        "y": 840,
+        "wires": [
+            [
+                "56daa9fb29d3d3b7"
+            ]
+        ]
+    },
+    {
+        "id": "56daa9fb29d3d3b7",
+        "type": "http response",
+        "z": "02b62f923772707e",
+        "name": "Prefs OK",
+        "statusCode": "",
+        "headers": {},
+        "x": 1370,
+        "y": 840,
+        "wires": []
+    },
+    {
+        "id": "ffe6b4d0f9bd3c61",
+        "type": "http response",
+        "z": "02b62f923772707e",
+        "name": "Erro prefs",
+        "statusCode": "",
+        "headers": {},
+        "x": 940,
+        "y": 900,
+        "wires": []
+    },
+    {
+        "id": "086da8ec3872ad88",
+        "type": "cloudantplus",
+        "host": "https://f1c0dcf9-5075-4061-a1f8-2f4ca596058a-bluemix.cloudantnosqldb.appdomain.cloud",
+        "name": "",
+        "useapikey": true
+    }
+]
